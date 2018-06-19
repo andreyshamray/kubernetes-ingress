@@ -930,10 +930,7 @@ func TestFindIngressesForSecret(t *testing.T) {
 			if err != nil {
 				t.Errorf("templateExecuter could not start: %v", err)
 			}
-			ngxc, err := nginx.NewNginxController("/etc/nginx", true, true, "../nginx/templates/nginx-plus.tmpl", "../nginx/templates/nginx-plus.ingress.tmpl")
-			if err != nil {
-				t.Errorf("NGINX Controller could not start: %v", err)
-			}
+			ngxc := nginx.NewNginxController("/etc/nginx", true)
 			apiCtrl, err := plus.NewNginxAPIController(&http.Client{}, "", true)
 			if err != nil {
 				t.Errorf("NGINX API Controller could not start: %v", err)
@@ -970,7 +967,7 @@ func TestFindIngressesForSecret(t *testing.T) {
 			lbc.ingLister.Add(&test.ingress)
 			lbc.secrLister.Add(&test.secret)
 
-			ingresses, err := lbc.findIngressesForSecret(test.secret.ObjectMeta.Namespace, test.secret.ObjectMeta.Name)
+			ingresses, _, err := lbc.findIngressesForSecret(test.secret.ObjectMeta.Namespace, test.secret.ObjectMeta.Name)
 			if err != nil {
 				t.Errorf("Couldn't list Ingress resource: %v", err)
 			}

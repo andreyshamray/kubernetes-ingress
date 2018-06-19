@@ -35,10 +35,6 @@ Minions cannot contain the following annotations:
 * nginx.org/server-tokens
 * nginx.org/listen-ports
 * nginx.org/listen-ports-ssl
-* nginx.com/jwt-key
-* nginx.com/jwt-realm
-* nginx.com/jwt-token
-* nginx.com/jwt-login-url
 
 Note: Ingress Resources with more than one host cannot be used.
 

@@ -41,8 +41,4 @@ var minionBlacklist = map[string]bool{
 	"nginx.org/server-tokens":            true,
 	"nginx.org/listen-ports":             true,
 	"nginx.org/listen-ports-ssl":         true,
-	"nginx.com/jwt-key":                  true,
-	"nginx.com/jwt-realm":                true,
-	"nginx.com/jwt-token":                true,
-	"nginx.com/jwt-login-url":            true,
 }
