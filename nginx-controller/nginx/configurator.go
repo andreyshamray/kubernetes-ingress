@@ -67,7 +67,8 @@ func (cnf *Configurator) AddOrUpdateIngress(ingEx *IngressEx) error {
 
 func (cnf *Configurator) addOrUpdateIngress(ingEx *IngressEx) error {
 	pems, jwtKeyFileName := cnf.updateSecrets(ingEx)
-	nginxCfg := cnf.generateNginxCfg(ingEx, pems, jwtKeyFileName, false)
+	isMinion := false
+	nginxCfg := cnf.generateNginxCfg(ingEx, pems, jwtKeyFileName, isMinion)
 	name := objectMetaToFileName(&ingEx.Ingress.ObjectMeta)
 	content, err := cnf.templateExecutor.ExecuteIngressConfigTemplate(&nginxCfg)
 	if err != nil {
@@ -120,7 +121,8 @@ func (cnf *Configurator) generateNginxCfgForMergeableIngresses(mergeableIngs *Me
 	}
 
 	pems, jwtKeyFileName := cnf.updateSecrets(mergeableIngs.Master)
-	masterNginxCfg := cnf.generateNginxCfg(mergeableIngs.Master, pems, jwtKeyFileName, false)
+	isMinion := false
+	masterNginxCfg := cnf.generateNginxCfg(mergeableIngs.Master, pems, jwtKeyFileName, isMinion)
 
 	masterServer = masterNginxCfg.Servers[0]
 	masterServer.IngressResource = objectMetaToFileName(&mergeableIngs.Master.Ingress.ObjectMeta)
@@ -148,7 +150,8 @@ func (cnf *Configurator) generateNginxCfgForMergeableIngresses(mergeableIngs *Me
 		}
 
 		pems, jwtKeyFileName := cnf.updateSecrets(minion)
-		nginxCfg := cnf.generateNginxCfg(minion, pems, jwtKeyFileName, true)
+		isMinion := true
+		nginxCfg := cnf.generateNginxCfg(minion, pems, jwtKeyFileName, isMinion)
 
 		for _, server := range nginxCfg.Servers {
 			for _, loc := range server.Locations {
@@ -201,7 +204,7 @@ func (cnf *Configurator) updateSecrets(ingEx *IngressEx) (map[string]string, str
 	return pems, jwtKeyFileName
 }
 
-func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]string, jwtKeyFileName string, minion bool) IngressNginxConfig {
+func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]string, jwtKeyFileName string, isMinion bool) IngressNginxConfig {
 	ingCfg := cnf.createConfig(ingEx)
 
 	upstreams := make(map[string]Upstream)
@@ -269,7 +272,7 @@ func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]stri
 			server.SSLCertificateKey = pemFile
 		}
 
-		if !minion && jwtKeyFileName != "" {
+		if !isMinion && jwtKeyFileName != "" {
 			server.JWTAuth = &JWTAuth{
 				Key:   jwtKeyFileName,
 				Realm: ingCfg.JWTRealm,
@@ -318,7 +321,7 @@ func (cnf *Configurator) generateNginxCfg(ingEx *IngressEx, pems map[string]stri
 
 			loc := createLocation(pathOrDefault(path.Path), upstreams[upsName], &ingCfg, wsServices[path.Backend.ServiceName], rewrites[path.Backend.ServiceName],
 				sslServices[path.Backend.ServiceName], grpcServices[path.Backend.ServiceName])
-			if minion && jwtKeyFileName != "" {
+			if isMinion && jwtKeyFileName != "" {
 				loc.JWTAuth = &JWTAuth{
 					Key:   jwtKeyFileName,
 					Realm: ingCfg.JWTRealm,
@@ -856,7 +859,9 @@ func upstreamMapToSlice(upstreams map[string]Upstream) []Upstream {
 		keys = append(keys, k)
 	}
 
-	// this ensures that the slice 'result' is sorted, which is needed for repeatable Unit test results
+	// this ensures that the slice 'result' is sorted, which preserves the order of upstream servers
+	// in the generated configuration file from one version to another and is also required for repeatable
+	// Unit test results
 	sort.Strings(keys)
 
 	result := make([]Upstream, 0, len(upstreams))

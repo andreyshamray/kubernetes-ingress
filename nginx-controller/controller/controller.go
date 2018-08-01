@@ -787,8 +787,7 @@ func (lbc *LoadBalancerController) syncSecret(task Task) {
 		lbc.syncQueue.requeueAfter(task, err, 5*time.Second)
 	}
 
-	glog.V(2).Infof("Found %v Non-Minion Ingress resources with Secret %v", len(nonMinions), key)
-	glog.V(2).Infof("Found %v Minion Ingress resources with Secret %v", len(minions), key)
+	glog.V(2).Infof("Found %v Non-Minion and %v Minion Ingress resources with Secret %v", len(nonMinions), len(minions), key)
 
 	if !secrExists {
 		glog.V(2).Infof("Deleting Secret: %v\n", key)
@@ -918,10 +917,7 @@ func (lbc *LoadBalancerController) syncSecret(task Task) {
 	}
 }
 
-func (lbc *LoadBalancerController) findIngressesForSecret(secretNamespace string, secretName string) ([]extensions.Ingress, []extensions.Ingress, error) {
-	var nonMinions []extensions.Ingress
-	var minions []extensions.Ingress
-
+func (lbc *LoadBalancerController) findIngressesForSecret(secretNamespace string, secretName string) (nonMinions []extensions.Ingress, minions []extensions.Ingress, error error) {
 	ings, err := lbc.ingLister.List()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Couldn't get the list of Ingress resources: %v", err)
@@ -958,10 +954,11 @@ items:
 		}
 
 		// we're dealing with a minion
-		// only JWT secrets are allowed in a minion
+		// minions can only have JWT secrets
 		if lbc.nginxPlus {
 			master, err := lbc.findMasterForMinion(&ing)
 			if err != nil {
+				glog.Infof("Ignoring Ingress %v(Minion): %v", ing.Name, err)
 				continue
 			}
 
